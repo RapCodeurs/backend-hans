@@ -46,10 +46,9 @@ stages:
       displayName: 'Build and Push image to ACR'
       inputs:
         command: 'buildAndPush'
-        containerRegistry: '$(azureServiceConnection)'
         containerRegistryType: 'Azure Resource Manager'
-        azureSubscriptionEndpoint: 'hans-devops' 
-        azureContainerRegistry: 'acrhansbackend.azurecr.io'
+        azureSubscriptionEndpoint: '$(azureServiceConnection)' 
+        azureContainerRegistry: '$(acrName)'
         repository: '$(imageRepository)'
         Dockerfile: '$(dockerfilePath)'
         tags: |
