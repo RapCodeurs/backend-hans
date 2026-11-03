@@ -47,6 +47,9 @@ stages:
       inputs:
         command: 'buildAndPush'
         containerRegistry: '$(azureServiceConnection)'
+        containerRegistryType: 'Azure Resource Manager'
+        azureSubscriptionEndpoint: 'hans-devops' 
+        azureContainerRegistry: 'acrhansbackend.azurecr.io'
         repository: '$(imageRepository)'
         Dockerfile: '$(dockerfilePath)'
         tags: |
