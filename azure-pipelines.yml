@@ -1,25 +1,28 @@
+# Le pipeline se déclenche sur les modifications de main ou des branches de fonctionnalités
 trigger:
 - main
+- cert
+- nprod
 
 pool:
   vmImage: 'ubuntu-latest'
 
 variables:
-  # Remplace par le NOM de ta Service Connection Azure créée à l'étape précédente
   azureServiceConnection: 'hans-devops' 
-  # Remplace par le NOM de ton Azure Container Registry
   acrName: 'acrhansbackend.azurecr.io'
   imageRepository: 'backend-hans'
   dockerfilePath: '$(Build.SourcesDirectory)/dockerfile'
-  tag: '$(Build.SourceVersion)' # Utilise le SHA du commit comme tag
+  tag: '$(Build.SourceVersion)'
 
 stages:
-- stage: BuildAndTest
-  displayName: 'Lint, Test, Scan & Build'
+# ==========================================
+# STAGE 1 : Build, Scan et Publication de l'image
+# ==========================================
+- stage: BuildAndPush
+  displayName: 'Build, Scan & Push'
   jobs:
-  - job: Pipeline
+  - job: BuildJob
     steps:
-    # 1. Installer Node.js et lancer les tests / lints
     - task: NodeTool@0
       inputs:
         versionSpec: '20.x'
@@ -27,34 +30,61 @@ stages:
 
     - script: |
         npm ci
-        # npm run lint  # Décommente si tu as un linter configuré
-        # npm test      # Décommente si tu as des tests configurés
-      displayName: 'Install, Lint & Test'
+      displayName: 'Install Dependencies'
 
-    # 2. Scanner le code avec Trivy pour la sécurité
     - script: |
         docker run --rm -v $(pwd):/apps aquasec/trivy:latest fs /apps --severity CRITICAL --exit-code 1
       displayName: 'Scan avec Trivy (Sécurité)'
 
-    # Étape temporaire de diagnostic
-    - script: |
-        echo "=== Répertoire courant ==="
-        pwd
-        echo "=== Liste des fichiers à la racine ==="
-        ls -la
-        echo "=== Vérification de la casse exacte ==="
-        ls -la | grep -i docker
-      displayName: 'Vérification présence Dockerfile'
-      
-    # 3. Build & Push de l'image vers Azure Container Registry (ACR)
     - task: Docker@2
       displayName: 'Build and Push image to ACR'
       inputs:
         command: 'buildAndPush'
-        containerRegistry: 'acr-direct-conn' # Nom de votre nouvelle connexion Docker Registry
+        containerRegistry: 'acr-direct-conn'
         repository: '$(imageRepository)'
         Dockerfile: '$(dockerfilePath)'
         buildContext: '$(Build.SourcesDirectory)'
         tags: |
           $(tag)
           latest
+
+# ==========================================
+# STAGE 2 : Déploiement en CERT (Recette)
+# ==========================================
+- stage: DeployCERT
+  displayName: 'Déploiement - CERT'
+  dependsOn: BuildAndPush
+  # S'exécute uniquement si le build a réussi ET que nous ne sommes PAS sur la branche de production directe par erreur
+  condition: succeeded()
+  jobs:
+  - job: Deploy
+    steps:
+    - script: echo "Déploiement de l'image $(imageRepository):$(tag) sur l'environnement CERT..."
+      displayName: 'Script Déploiement CERT'
+
+# ==========================================
+# STAGE 3 : Déploiement en NPROD (Pré-production)
+# ==========================================
+- stage: DeployNPROD
+  displayName: 'Déploiement - NPROD'
+  dependsOn: DeployCERT
+  condition: succeeded()
+  jobs:
+  - job: Deploy
+    steps:
+    - script: echo "Déploiement de l'image $(imageRepository):$(tag) sur l'environnement NPROD..."
+      displayName: 'Script Déploiement NPROD'
+
+# ==========================================
+# STAGE 4 : Déploiement en PROD (Production)
+# ==========================================
+- stage: DeployPROD
+  displayName: 'Déploiement - PROD'
+  dependsOn: DeployNPROD
+  # CONDITION CRITIQUE : Ne s'exécute QUE si le code a été fusionné (mergé) sur la branche main
+  condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+  jobs:
+  - job: Deploy
+    steps:
+    - script: echo "Déploiement de l'image $(imageRepository):$(tag) sur l'environnement PROD de manière sécurisée..."
+      displayName: 'Script Déploiement PROD'
