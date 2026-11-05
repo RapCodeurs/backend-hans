@@ -51,11 +51,10 @@ stages:
       displayName: 'Build and Push image to ACR'
       inputs:
         command: 'buildAndPush'
-        containerRegistryType: 'Azure Resource Manager'
-        azureSubscriptionEndpoint: '$(azureServiceConnection)' 
-        azureContainerRegistry: '$(acrName)'
+        containerRegistry: 'acr-direct-conn' # Nom de votre nouvelle connexion Docker Registry
         repository: '$(imageRepository)'
         Dockerfile: '$(dockerfilePath)'
+        buildContext: '$(Build.SourcesDirectory)'
         tags: |
           $(tag)
           latest
