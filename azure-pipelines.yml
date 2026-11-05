@@ -35,17 +35,18 @@ stages:
     - script: |
         docker run --rm -v $(pwd):/apps aquasec/trivy:latest fs /apps --severity CRITICAL --exit-code 1
       displayName: 'Scan avec Trivy (Sécurité)'
-
-    # 3. Build & Push de l'image vers Azure Container Registry (ACR)
+    
+     # 3. Build & Push de l'image vers Azure Container Registry (ACR)
     - task: Docker@2
       displayName: 'Build and Push image to ACR'
       inputs:
         command: 'buildAndPush'
         containerRegistryType: 'Azure Resource Manager'
-        azureSubscriptionEndpoint: '$(azureServiceConnection)' 
+        azureSubscriptionEndpoint: '$(azureServiceConnection)'
         azureContainerRegistry: '$(acrName)'
         repository: '$(imageRepository)'
-        Dockerfile: '$(dockerfilePath)'
+        Dockerfile: '$(Build.SourcesDirectory)/Dockerfile'
+        buildContext: '$(Build.SourcesDirectory)' # <-- AJOUTEZ CETTE LIGNE STRICTEMENT
         tags: |
           $(tag)
           latest
