@@ -36,6 +36,16 @@ stages:
         docker run --rm -v $(pwd):/apps aquasec/trivy:latest fs /apps --severity CRITICAL --exit-code 1
       displayName: 'Scan avec Trivy (Sécurité)'
 
+    # Étape temporaire de diagnostic
+    - script: |
+        echo "=== Répertoire courant ==="
+        pwd
+        echo "=== Liste des fichiers à la racine ==="
+        ls -la
+        echo "=== Vérification de la casse exacte ==="
+        ls -la | grep -i docker
+      displayName: 'Vérification présence Dockerfile'
+      
     # 3. Build & Push de l'image vers Azure Container Registry (ACR)
     - task: Docker@2
       displayName: 'Build and Push image to ACR'
