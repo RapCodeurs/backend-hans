@@ -10,7 +10,7 @@ variables:
   # Remplace par le NOM de ton Azure Container Registry
   acrName: 'acrhansbackend.azurecr.io'
   imageRepository: 'backend-hans'
-  dockerfilePath: '$**/Dockerfile'
+  dockerfilePath: '$(Build.SourcesDirectory)/Dockerfile'
   tag: '$(Build.SourceVersion)' # Utilise le SHA du commit comme tag
 
 stages:
